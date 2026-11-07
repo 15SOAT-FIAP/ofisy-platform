@@ -1,0 +1,66 @@
+name: Subir ambiente
+
+on:
+  workflow_dispatch:
+
+concurrency: ofisy-environment
+
+jobs:
+  # Etapa 1
+  network:
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-network.yml@master
+    secrets: inherit
+
+  # Não depende da rede, mas espera ela criar o bucket do Terraform state
+  messaging:
+    needs: network
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-messaging.yml@master
+    secrets: inherit
+
+  # Etapa 2
+  eks:
+    needs: network
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-eks.yml@master
+    with:
+      service: all
+    secrets: inherit
+
+  # Etapa 3
+  auth-images:
+    needs: network
+    uses: 15SOAT-FIAP/techchallenge-ofisy-auth/.github/workflows/cd.yml@master
+    secrets: inherit
+
+  # Etapa 4
+  databases:
+    needs: network
+    uses: 15SOAT-FIAP/techchallenge-ofisy-db-infra/.github/workflows/deploy.yml@master
+    with:
+      service: all
+    secrets: inherit
+
+  # Etapa 5
+  auth-lambda:
+    needs: [databases, auth-images]
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-auth-lambda.yml@master
+    with:
+      image_tag: ${{ needs.auth-images.outputs.image_tag }}
+      authorizer_image_tag: ${{ needs.auth-images.outputs.authorizer_image_tag }}
+    secrets: inherit
+
+  # Etapa 6
+  app-core:
+    needs: [eks, databases, messaging]
+    uses: 15SOAT-FIAP/techchallenge-ofisy/.github/workflows/cd.yml@master
+    secrets: inherit
+
+  app-execution:
+    needs: [eks, databases, messaging]
+    uses: 15SOAT-FIAP/ms-ofisy-execution/.github/workflows/cd.yml@master
+    secrets: inherit
+
+  # Etapa 7
+  api-gateway:
+    needs: [auth-lambda, app-core, app-execution]
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-api-gateway.yml@master
+    secrets: inherit
