@@ -1,0 +1,51 @@
+name: Destruir ambiente
+
+on:
+  workflow_dispatch:
+
+concurrency: ofisy-environment
+  
+jobs:
+  api-gateway:
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-api-gateway.yml@master
+    secrets: inherit
+
+  app-core:
+    needs: api-gateway
+    uses: 15SOAT-FIAP/techchallenge-ofisy/.github/workflows/destroy-app.yml@master
+    secrets: inherit
+
+  app-execution:
+    needs: api-gateway
+    uses: 15SOAT-FIAP/ms-ofisy-execution/.github/workflows/destroy-app.yml@master
+    secrets: inherit
+
+  messaging:
+    needs: [app-core, app-execution]
+    if: ${{ !cancelled() }}
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-messaging.yml@master
+    secrets: inherit
+
+  auth-lambda:
+    needs: [app-core, app-execution]
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-auth-lambda.yml@master
+    secrets: inherit
+
+  databases:
+    needs: auth-lambda
+    uses: 15SOAT-FIAP/techchallenge-ofisy-db-infra/.github/workflows/destroy.yml@master
+    with:
+      service: all
+    secrets: inherit
+
+  eks:
+    needs: databases
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-eks.yml@master
+    with:
+      service: all
+    secrets: inherit
+
+  network:
+    needs: [eks, messaging]
+    uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-network.yml@master
+    secrets: inherit
