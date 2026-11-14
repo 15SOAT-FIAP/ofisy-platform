@@ -59,8 +59,25 @@ jobs:
     uses: 15SOAT-FIAP/ms-ofisy-execution/.github/workflows/cd.yml@master
     secrets: inherit
 
+  app-stock:
+    needs: [eks, databases, messaging]
+    uses: 15SOAT-FIAP/ms-ofisy-stock/.github/workflows/cd.yml@master
+    secrets: inherit
+
+  # Lê o NLB do core para resolver o titular da OS
+  app-notification:
+    needs: app-core
+    uses: 15SOAT-FIAP/ms-ofisy-notification/.github/workflows/cd.yml@master
+    secrets: inherit
+
+  # Lê os NLBs do core e do stock
+  app-billing:
+    needs: [app-core, app-stock]
+    uses: 15SOAT-FIAP/ms-ofisy-billing/.github/workflows/cd.yml@master
+    secrets: inherit
+
   # Etapa 7
   api-gateway:
-    needs: [auth-lambda, app-core, app-execution]
+    needs: [auth-lambda, app-core, app-execution, app-stock, app-notification, app-billing]
     uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/deploy-api-gateway.yml@master
     secrets: inherit

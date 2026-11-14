@@ -20,14 +20,29 @@ jobs:
     uses: 15SOAT-FIAP/ms-ofisy-execution/.github/workflows/destroy-app.yml@master
     secrets: inherit
 
+  app-stock:
+    needs: api-gateway
+    uses: 15SOAT-FIAP/ms-ofisy-stock/.github/workflows/destroy-app.yml@master
+    secrets: inherit
+
+  app-notification:
+    needs: api-gateway
+    uses: 15SOAT-FIAP/ms-ofisy-notification/.github/workflows/destroy-app.yml@master
+    secrets: inherit
+
+  app-billing:
+    needs: api-gateway
+    uses: 15SOAT-FIAP/ms-ofisy-billing/.github/workflows/destroy-app.yml@master
+    secrets: inherit
+
   messaging:
-    needs: [app-core, app-execution]
+    needs: [app-core, app-execution, app-stock, app-notification, app-billing]
     if: ${{ !cancelled() }}
     uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-messaging.yml@master
     secrets: inherit
 
   auth-lambda:
-    needs: [app-core, app-execution]
+    needs: [app-core, app-execution, app-stock, app-notification, app-billing]
     uses: 15SOAT-FIAP/techchallenge-ofisy-eks-infra/.github/workflows/destroy-auth-lambda.yml@master
     secrets: inherit
 
