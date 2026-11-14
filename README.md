@@ -23,24 +23,31 @@ flowchart TD
     L["auth-lambda (5)<br/>eks-infra deploy-auth-lambda"]
     C["app-core (6)<br/>techchallenge-ofisy cd"]
     X["app-execution (6)<br/>ms-ofisy-execution cd"]
+    S["app-stock (6)<br/>ms-ofisy-stock cd"]
+    O["app-notification (6)<br/>ms-ofisy-notification cd"]
+    B["app-billing (6)<br/>ms-ofisy-billing cd"]
     G["api-gateway (7)<br/>eks-infra deploy-api-gateway"]
 
     N --> M & E & I & D
     D & I --> L
-    E & D & M --> C & X
-    L & C & X --> G
+    E & D & M --> C & X & S
+    C --> O
+    C & S --> B
+    L & C & X & S & O & B --> G
 ```
 
 - **messaging** não depende da rede, mas espera ela porque é o deploy da rede que cria o bucket do Terraform state (`ofisy-tfstate-<AWS_ACCOUNT_ID>`).
 - **auth-lambda** recebe `image_tag` e `authorizer_image_tag` dos outputs do CD do `techchallenge-ofisy-auth`.
 - **eks** e **databases** sobem os cinco serviços (`service: all`).
+- **app-notification** espera o core, e **app-billing** espera o core e o stock, porque o CD de cada um descobre o NLB interno dessas dependências para configurar as chamadas síncronas.
+- **api-gateway** espera todos os microsserviços porque o `plan` descobre o NLB de cada serviço listado em `nlb_service_names`.
 
 ## Destruir ambiente
 
 ```mermaid
 flowchart TD
-    G["api-gateway"] --> C["app-core"] & X["app-execution"]
-    C & X --> M["messaging"] & L["auth-lambda"]
+    G["api-gateway"] --> C["app-core"] & X["app-execution"] & S["app-stock"] & O["app-notification"] & B["app-billing"]
+    C & X & S & O & B --> M["messaging"] & L["auth-lambda"]
     L --> D["databases"] --> E["eks"]
     E & M --> N["network"]
 ```
